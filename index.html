@@ -7,16 +7,20 @@
     <meta name="theme-color" content="#ffffff">
     <link rel="manifest" href="manifest.json">
     <title>KEENG MARKET SaaS</title>
+    
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Xato:', err)); });
         }
     </script>
+    
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         :root { --blue: #2563eb; --green: #10b981; --red: #ef4444; --orange: #f59e0b; --dark: #1e293b; --bg: #f8fafc; }
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -128,7 +132,7 @@
         </div>
 
         <div id="tab-nasiya" class="tab-content">
-            <div class="card" style="background: #fff7ed; border: 1px solid #fdba74;"><span style="color: #c2410c;">Jami qarz:</span><h2 id="total-debt-sum" style="margin: 5px 0; color: #9a3412;">0 so'm</h2></div>
+            <div class="card" style="background: #fff7ed; border: 1px solid #fdba74;"><span style="color: #c2410c;">Faqat Qarzlar jami:</span><h2 id="total-debt-sum" style="margin: 5px 0; color: #9a3412;">0 so'm</h2></div>
             <input type="text" id="debt-search" placeholder="Qidirish..." oninput="renderDebts()">
             <div id="debt-list"></div>
         </div>
@@ -159,6 +163,11 @@
                     <h4 style="margin-top:0; color:var(--blue);"><i class="fab fa-telegram"></i> Telegram Mini App</h4>
                     <p style="font-size:12px; color:#666;">BotFather'dan bot oching va Web App URL qismiga ushbu sizning shaxsiy havolangizni joylashtiring:</p>
                     <input type="text" id="mini-app-link" readonly style="background:#f1f5f9; font-size:13px; cursor:copy;" onclick="this.select(); document.execCommand('copy'); myAlert('Havola nusxalandi!');">
+                </div>
+                <div style="margin-top: 10px;">
+                    <p style="font-size:12px; color:#666; margin-bottom:5px;">Qo'shimcha SMS borishi uchun (Ixtiyoriy):</p>
+                    <input type="text" id="set-tg-token" placeholder="Bot Token">
+                    <input type="text" id="set-tg-chat" placeholder="Chat ID">
                 </div>
                 <button class="btn btn-green" onclick="saveSozlamalar()">SAQLASH</button>
             </div>
@@ -211,14 +220,48 @@
 
     <div id="custom-alert" class="modal"><div class="modal-box custom-alert-box"><div class="custom-alert-icon"><i class="fas fa-info-circle"></i></div><div id="custom-alert-msg" class="custom-alert-title"></div><button class="btn btn-blue" onclick="closeModal('custom-alert')">Tushunarli</button></div></div>
     <div id="custom-confirm" class="modal"><div class="modal-box custom-alert-box"><div class="custom-alert-icon" style="color:var(--orange)"><i class="fas fa-question-circle"></i></div><div id="custom-confirm-msg" class="custom-alert-title"></div><div class="grid-2"><button id="confirm-yes-btn" class="btn btn-green">HA</button><button class="btn btn-red" onclick="closeModal('custom-confirm')">YO'Q</button></div></div></div>
-    <div id="modal-admin-check" class="modal"><div class="modal-box"><div class="flex-between" style="margin-bottom: 10px;"><h3 style="margin:0;">Tasdiqlash</h3><div style="display:flex; gap:5px;"><button class="btn btn-outline small" style="width:auto; margin:0; padding:5px 10px;" onclick="printReceipt()"><i class="fas fa-print"></i> Oddiy</button><button class="btn btn-outline small" style="width:auto; margin:0; padding:5px 10px; border-color:var(--blue); color:var(--blue);" onclick="shareToIPrint()"><i class="fas fa-share-nodes"></i> iPrint</button></div></div><div id="admin-check-content" class="receipt-style" onclick="printReceipt()"></div><button class="btn btn-green" onclick="completeCheckout()">SOTISH</button><button class="btn btn-red" onclick="closeModal('modal-admin-check')">BEKOR</button></div></div>
+    
+    <div id="modal-admin-check" class="modal">
+        <div class="modal-box">
+            <div class="flex-between" style="margin-bottom: 10px;">
+                <h3 style="margin:0;">Tasdiqlash</h3>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn btn-outline small" style="width:auto; margin:0; padding:5px 10px;" onclick="printReceipt()"><i class="fas fa-print"></i> Oddiy</button>
+                    <button class="btn btn-outline small" style="width:auto; margin:0; padding:5px 10px; border-color:var(--blue); color:var(--blue);" onclick="shareToIPrint()"><i class="fas fa-share-nodes"></i> iPrint</button>
+                </div>
+            </div>
+            <div id="admin-check-content" class="receipt-style"></div>
+            
+            <button class="btn btn-green" onclick="completeCheckout()">SOTISH</button>
+            <button class="btn btn-red" onclick="closeModal('modal-admin-check')">BEKOR</button>
+        </div>
+    </div>
+    
+    <div id="modal-client-check" class="modal"><div class="modal-box"><h3>Tasdiqlash</h3><div id="client-check-content" class="receipt-style"></div><button class="btn btn-green" onclick="submitOrderFinal()">TASDIQLASH</button><button class="btn btn-red" onclick="closeModal('modal-client-check')">BEKOR</button></div></div>
     <div id="modal-debt-create" class="modal"><div class="modal-box"><h3>Nasiya Yozish</h3><p>Jami: <b id="debt-modal-total">0</b></p><input type="text" id="debt-customer-name" placeholder="Ism"><input type="text" id="debt-customer-phone" placeholder="Tel"><button class="btn btn-green" onclick="confirmDebt()">TASDIQLASH</button><button class="btn btn-red" onclick="closeModal('modal-debt-create')">BEKOR</button></div></div>
-    <div id="modal-debt-info" class="modal"><div class="modal-box" style="height:80vh;"><div class="flex-between"><h3 id="debt-info-name">Mijoz</h3><button onclick="closeModal('modal-debt-info')" style="background:none; border:none; font-size:20px;">✕</button></div><h2 id="debt-info-balance" style="color:var(--red); text-align:center;">0</h2><div style="background:#f1f5f9; padding:10px; border-radius:10px; flex-grow:1; overflow-y:auto; margin-bottom:10px;"><div id="debt-history-list"></div></div><input type="number" id="debt-pay-amount" placeholder="Summa"><button class="btn btn-green" onclick="payDebt()">TO'LOV QILISH</button></div></div>
+    
+    <div id="modal-debt-info" class="modal">
+        <div class="modal-box" style="height:80vh;">
+            <div class="flex-between">
+                <h3 id="debt-info-name">Mijoz</h3>
+                <button onclick="closeModal('modal-debt-info')" style="background:none; border:none; font-size:20px;">✕</button>
+            </div>
+            <h2 id="debt-info-balance" style="text-align:center; margin-top:5px;">0</h2>
+            <div style="background:#f1f5f9; padding:10px; border-radius:10px; flex-grow:1; overflow-y:auto; margin-bottom:10px;">
+                <div id="debt-history-list"></div>
+            </div>
+            <input type="number" id="debt-pay-amount" placeholder="Summani kiriting">
+            <div class="grid-2">
+                <button class="btn btn-green" onclick="payDebt('kirim')">PUL OLISH</button>
+                <button class="btn btn-red" onclick="payDebt('chiqim')">PUL BERISH</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="modal-archive-detail" class="modal"><div class="modal-box" style="height:90vh;"><div class="flex-between"><h3 id="archive-title" style="margin:0">Tafsilotlar</h3><button onclick="closeModal('modal-archive-detail')" style="background:none; border:none; font-size:24px;">×</button></div><div id="archive-detail-content" style="flex-grow:1; overflow-y:auto; margin-top:10px;"></div><button class="btn btn-red" style="margin-top:10px;" onclick="closeModal('modal-archive-detail')">YOPISH</button></div></div>
     <div id="scanner-modal" class="modal" style="background:black;"><div style="width:100%; height:100%; display:flex; flex-direction:column;"><div id="reader" style="width:100%; flex-grow:1;"></div><button class="btn btn-red big-btn" style="margin:20px;" onclick="stopScanner()">YOPISH</button></div></div>
 
     <script>
-        // O'ZINGIZNING FIREBASE KODINGIZNI QO'YING
         const firebaseConfig = { apiKey: "AIzaSyA8F47YRcEPTIwyI7AjSeqXIyddFpz8orU", authDomain: "keeng-market.firebaseapp.com", databaseURL: "https://keeng-market-default-rtdb.firebaseio.com", projectId: "keeng-market", storageBucket: "keeng-market.firebasestorage.app", messagingSenderId: "688523074873", appId: "1:688523074873:web:016b69f98a238bd19d5ce8" };
         firebase.initializeApp(firebaseConfig); const db = firebase.database();
 
@@ -228,25 +271,21 @@
         let SESSION = { sales: [], date: null }, ARCHIVES = { daily: [], weekly: [], monthly: [] };
         let html5QrCode = null, clientLoc = null, activeClientCat = null, confirmCallback = null, scanLock = false, tempType = null;
         
-        // Buyurtma kelganda chalinadigan audio
         const orderSound = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
         let prevOrderCount = -1;
 
-        // Telegram Mini App URL parametrlari
         const urlParams = new URLSearchParams(window.location.search);
         const shopParam = urlParams.get('shop');
 
         window.onload = () => {
             window.addEventListener('online', syncToCloud);
-            window.addEventListener('offline', () => myAlert("Internet uzildi. Ilova oflayn rejimda ishlamoqda."));
-            
-            // Mijoz bot orqali kirgan bo'lsa
+            window.addEventListener('offline', () => myAlert("Diqqat! Siz oflayn rejimdasiz."));
+            if (!navigator.onLine) { setTimeout(() => myAlert("Diqqat! Siz oflayn rejimdasiz."), 1000); }
+
             if (shopParam) {
                 if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.expand) window.Telegram.WebApp.expand();
                 openClientModeFromUrl(shopParam);
-            } else {
-                checkLocalLogin();
-            }
+            } else { checkLocalLogin(); }
         };
 
         function openClientModeFromUrl(shopId) {
@@ -261,59 +300,34 @@
             });
         }
 
-        // --- OFLAYN & SYNC ---
         function checkLocalLogin() {
             const savedPhone = localStorage.getItem('saas_current_phone');
             if (savedPhone) {
-                currentUserPhone = savedPhone; loadFromLocal(savedPhone);
-                // Avto login payti darxol blokni tekshiramiz
-                checkSubscription();
-                
+                currentUserPhone = savedPhone; loadFromLocal(savedPhone); checkSubscription();
                 document.getElementById('screen-login').classList.remove('active'); document.getElementById('screen-admin').classList.add('active');
                 const myUrl = window.location.href.split('?')[0]; document.getElementById('mini-app-link').value = myUrl + "?shop=" + savedPhone;
-                
                 applyTariffLocks(); refreshUI();
                 if (navigator.onLine) { startListeningTenant(currentUserPhone); syncToCloud(); }
             }
         }
         function loadFromLocal(phone) { const localData = localStorage.getItem('saas_data_' + phone); if (localData) { const d = JSON.parse(localData); dokonSozlamalar = d.sozlamalar || dokonSozlamalar; currentTarif = dokonSozlamalar.tarif; DB = d.DB || []; DEBTS = d.DEBTS || []; ORDERS = d.ORDERS || []; SESSION = d.SESSION || { sales: [], date: new Date().toLocaleDateString() }; ARCHIVES = d.ARCHIVES || { daily: [], weekly: [], monthly: [] }; } }
         function saveToLocal() { if (!currentUserPhone) return; const dataToSave = { sozlamalar: dokonSozlamalar, DB: DB, DEBTS: DEBTS, ORDERS: ORDERS, SESSION: SESSION, ARCHIVES: ARCHIVES }; localStorage.setItem('saas_data_' + currentUserPhone, JSON.stringify(dataToSave)); localStorage.setItem('saas_needs_sync', 'true'); }
-        
         function saveToCloud() { 
-            if (!currentUserPhone) return; 
-            saveToLocal(); 
+            if (!currentUserPhone) return; saveToLocal(); 
             if (navigator.onLine) { 
-                // DIQQAT: Pultdan qo'yilgan blokni ochib yubormasligi uchun faqat ruxsat etilgan maydonlar yangilanadi
-                db.ref("saas_dokonlar/" + currentUserPhone).update({ 
-                    DB: DB, DEBTS: DEBTS, SESSION: SESSION, ARCHIVES: ARCHIVES, ORDERS: ORDERS, 
-                    "sozlamalar/dokon_nomi": dokonSozlamalar.dokon_nomi || "",
-                    "sozlamalar/telefon": dokonSozlamalar.telefon || "",
-                    "sozlamalar/chek_footer": dokonSozlamalar.chek_footer || "",
-                    "sozlamalar/tg_bot_token": dokonSozlamalar.tg_bot_token || "",
-                    "sozlamalar/tg_chat_id": dokonSozlamalar.tg_chat_id || ""
-                }).then(() => { localStorage.removeItem('saas_needs_sync'); }).catch(e => console.log("Saqlash xatosi")); 
+                db.ref("saas_dokonlar/" + currentUserPhone).update({ DB: DB, DEBTS: DEBTS, SESSION: SESSION, ARCHIVES: ARCHIVES, ORDERS: ORDERS, "sozlamalar/dokon_nomi": dokonSozlamalar.dokon_nomi || "", "sozlamalar/telefon": dokonSozlamalar.telefon || "", "sozlamalar/chek_footer": dokonSozlamalar.chek_footer || "", "sozlamalar/tg_bot_token": dokonSozlamalar.tg_bot_token || "", "sozlamalar/tg_chat_id": dokonSozlamalar.tg_chat_id || "" }).then(() => { localStorage.removeItem('saas_needs_sync'); }).catch(e => console.log("Saqlash xatosi")); 
             } 
         }
-        
         function syncToCloud() { if (localStorage.getItem('saas_needs_sync') === 'true' && currentUserPhone) saveToCloud(); }
         
         function startListeningTenant(phone) {
             db.ref("saas_dokonlar/" + phone).on("value", snap => {
                 if (snap.exists()) {
-                    const d = snap.val(); 
-                    
-                    // Har qanday holatda serverdagi Admin blokini va statusini birinchi o'ringa qo'yamiz
-                    dokonSozlamalar = d.sozlamalar || dokonSozlamalar;
-                    checkSubscription(); // Agar serverdan 'bloklangan' bo'lsa darxol qulf oynasi chiqadi
-
+                    const d = snap.val(); dokonSozlamalar = d.sozlamalar || dokonSozlamalar; checkSubscription(); 
                     if (localStorage.getItem('saas_needs_sync') !== 'true') {
-                        DB = d.DB || []; DEBTS = d.DEBTS || []; 
-                        let rawOrders = d.ORDERS || []; ORDERS = Array.isArray(rawOrders) ? rawOrders : Object.values(rawOrders);
-                        
-                        // YANGI BUYURTMA KELGANDA OVOZLI SIGNAL:
+                        DB = d.DB || []; DEBTS = d.DEBTS || []; let rawOrders = d.ORDERS || []; ORDERS = Array.isArray(rawOrders) ? rawOrders : Object.values(rawOrders);
                         if (prevOrderCount !== -1 && ORDERS.length > prevOrderCount) { orderSound.play().catch(e=>console.log(e)); if(navigator.vibrate) navigator.vibrate([200,100,200]); }
                         prevOrderCount = ORDERS.length;
-
                         SESSION = d.SESSION || { sales: [], date: new Date().toLocaleDateString() }; ARCHIVES = d.ARCHIVES || { daily: [], weekly: [], monthly: [] };
                         saveToLocal(); refreshUI();
                     }
@@ -321,7 +335,6 @@
             });
         }
 
-        // --- AUTH & OBUNA ---
         function toggleAuthMode(mode) { if(mode === 'login') { document.getElementById('form-login').style.display = 'block'; document.getElementById('form-register').style.display = 'none'; document.getElementById('tab-btn-login').className = 'btn btn-blue'; document.getElementById('tab-btn-register').className = 'btn btn-outline'; document.getElementById('tab-btn-register').style.border = 'none'; } else { document.getElementById('form-login').style.display = 'none'; document.getElementById('form-register').style.display = 'block'; document.getElementById('tab-btn-register').className = 'btn btn-blue'; document.getElementById('tab-btn-login').className = 'btn btn-outline'; document.getElementById('tab-btn-login').style.border = 'none'; } }
         function selectTarif(tarif, el) { document.querySelectorAll('.tarif-card').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); document.getElementById('selected-tarif').value = tarif; }
         
@@ -329,11 +342,10 @@
             if (!navigator.onLine) return myAlert("Internet kerak!");
             const name = document.getElementById('reg-name').value, phone = document.getElementById('reg-phone').value, pass = document.getElementById('reg-pass').value, tarif = document.getElementById('selected-tarif').value;
             if(!name || !phone || !pass) return myAlert("Maydonlarni to'ldiring!"); if(!tarif) return myAlert("Tarif tanlang!");
-            
             db.ref("saas_dokonlar/" + phone).once("value", snap => {
                 if(snap.exists()) return myAlert("Bu raqam band.");
-                let exp = new Date(); exp.setDate(exp.getDate() + 30); // 30 kun tekin muddat beriladi
-                const newStore = { sozlamalar: { dokon_nomi: name, telefon: phone, parol: pass, tarif: tarif, obuna_tugash_sanasi: exp.toISOString().split('T')[0], ro_yxatdan_sana: new Date().toLocaleDateString(), status: "faol", chek_footer: "Xaridingiz uchun rahmat! 😊" }, DB: [], DEBTS: [], ORDERS: [], SESSION: { sales: [], date: new Date().toLocaleDateString() }, ARCHIVES: { daily: [], weekly: [], monthly: [] } };
+                let exp = new Date(); exp.setDate(exp.getDate() + 30); 
+                const newStore = { sozlamalar: { dokon_nomi: name, telefon: phone, parol: pass, tarif: tarif, obuna_tugash_sanasi: exp.toISOString().split('T')[0], ro_yxatdan_sana: new Date().toLocaleDateString(), status: "faol", chek_footer: "Xaridingiz uchun rahmat! 😊", tg_bot_token: "", tg_chat_id: "" }, DB: [], DEBTS: [], ORDERS: [], SESSION: { sales: [], date: new Date().toLocaleDateString() }, ARCHIVES: { daily: [], weekly: [], monthly: [] } };
                 db.ref("saas_dokonlar/" + phone).set(newStore).then(() => { myAlert("Muvaffaqiyatli! 30 kun muddat berildi."); toggleAuthMode('login'); document.getElementById('login-phone').value = phone; document.getElementById('login-pass').value = pass; });
             });
         }
@@ -350,36 +362,23 @@
                 if(!snap.exists()) return myAlert("Topilmadi!"); const data = snap.val();
                 if(data.sozlamalar.parol !== pass) return myAlert("Parol xato!");
                 if(data.sozlamalar.status === 'bloklangan') return myAlert("Profilingiz admin tomonidan bloklangan!");
-                
                 currentUserPhone = phone; currentTarif = data.sozlamalar.tarif; localStorage.setItem('saas_current_phone', phone);
-                dokonSozlamalar = data.sozlamalar; DB = data.DB || []; DEBTS = data.DEBTS || []; 
-                let rawOrders = data.ORDERS || []; ORDERS = Array.isArray(rawOrders) ? rawOrders : Object.values(rawOrders); prevOrderCount = ORDERS.length;
-                SESSION = data.SESSION || { sales: [], date: new Date().toLocaleDateString() }; ARCHIVES = data.ARCHIVES || { daily: [], weekly: [], monthly: [] };
-                saveToLocal();
-                
-                document.getElementById('set-dokon-nomi').value = dokonSozlamalar.dokon_nomi || ""; document.getElementById('set-telefon').value = dokonSozlamalar.telefon || ""; document.getElementById('set-chek-footer').value = dokonSozlamalar.chek_footer || "";
+                dokonSozlamalar = data.sozlamalar; DB = data.DB || []; DEBTS = data.DEBTS || []; let rawOrders = data.ORDERS || []; ORDERS = Array.isArray(rawOrders) ? rawOrders : Object.values(rawOrders); prevOrderCount = ORDERS.length;
+                SESSION = data.SESSION || { sales: [], date: new Date().toLocaleDateString() }; ARCHIVES = data.ARCHIVES || { daily: [], weekly: [], monthly: [] }; saveToLocal();
+                document.getElementById('set-dokon-nomi').value = dokonSozlamalar.dokon_nomi || ""; document.getElementById('set-telefon').value = dokonSozlamalar.telefon || ""; document.getElementById('set-chek-footer').value = dokonSozlamalar.chek_footer || ""; document.getElementById('set-tg-token').value = dokonSozlamalar.tg_bot_token || ""; document.getElementById('set-tg-chat').value = dokonSozlamalar.tg_chat_id || "";
                 const myUrl = window.location.href.split('?')[0]; document.getElementById('mini-app-link').value = myUrl + "?shop=" + phone;
-                
                 startListeningTenant(phone); document.getElementById('screen-login').classList.remove('active'); document.getElementById('screen-admin').classList.add('active'); applyTariffLocks(); refreshUI();
             });
         }
         function saasLogout() { myConfirm("Chiqishni xohlaysizmi?", () => { localStorage.removeItem('saas_current_phone'); localStorage.removeItem('saas_data_' + currentUserPhone); location.reload(); }); }
-        
-        function saveSozlamalar() {
-            dokonSozlamalar.dokon_nomi = document.getElementById('set-dokon-nomi').value; dokonSozlamalar.telefon = document.getElementById('set-telefon').value; dokonSozlamalar.chek_footer = document.getElementById('set-chek-footer').value;
-            saveToCloud(); myAlert("Sozlamalar saqlandi!");
-        }
+        function saveSozlamalar() { dokonSozlamalar.dokon_nomi = document.getElementById('set-dokon-nomi').value; dokonSozlamalar.telefon = document.getElementById('set-telefon').value; dokonSozlamalar.chek_footer = document.getElementById('set-chek-footer').value; dokonSozlamalar.tg_bot_token = document.getElementById('set-tg-token').value.trim(); dokonSozlamalar.tg_chat_id = document.getElementById('set-tg-chat').value.trim(); saveToCloud(); myAlert("Sozlamalar saqlandi!"); }
 
         async function connectBluetooth() { try { const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true }); myAlert(device.name + " ulandi! (Chek oynasidagi 'iPrint' orqali chiqaring)"); } catch(e) { myAlert("Bekor qilindi yoki ishlamaydi."); } }
 
         function checkSubscription() {
             if (!dokonSozlamalar || !dokonSozlamalar.obuna_tugash_sanasi) return;
             const expDate = new Date(dokonSozlamalar.obuna_tugash_sanasi); const today = new Date();
-            if (dokonSozlamalar.status === 'bloklangan' || today > expDate) { 
-                document.getElementById('modal-expired').style.display = 'flex'; 
-            } else { 
-                document.getElementById('modal-expired').style.display = 'none'; 
-            }
+            if (dokonSozlamalar.status === 'bloklangan' || today > expDate) { document.getElementById('modal-expired').style.display = 'flex'; } else { document.getElementById('modal-expired').style.display = 'none'; }
         }
 
         function switchTab(t, b) {
@@ -388,13 +387,7 @@
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active-tab')); document.getElementById('tab-' + t).classList.add('active-tab'); document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active')); b.classList.add('active'); if (t === 'hisobot') renderStats();
         }
         function applyTariffLocks() { document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('locked')); if (currentTarif === 'mini') { document.getElementById('nav-btn-hisobot').classList.add('locked'); document.getElementById('nav-btn-online').classList.add('locked'); } else if (currentTarif === 'standart') { document.getElementById('nav-btn-online').classList.add('locked'); } }
-        function refreshUI() {
-            if (document.getElementById('screen-admin').classList.contains('active')) { renderKassa(); renderStock(); renderStats(); renderDebts(); updateCartUI(); renderOnlineOrders(); checkSubscription(); }
-            if (document.getElementById('screen-client').classList.contains('active')) { if (activeClientCat) renderClientProducts(activeClientCat); else renderClientCategories(); updateClientCartUI(); }
-            const b = document.getElementById('nav-badge'); const c = ORDERS ? ORDERS.length : 0; if (c > 0) { b.style.display = 'block'; b.innerText = c; } else b.style.display = 'none';
-        }
-
-        // ASOSIY FUNKSIYALAR
+        function refreshUI() { if (document.getElementById('screen-admin').classList.contains('active')) { renderKassa(); renderStock(); renderStats(); renderDebts(); updateCartUI(); renderOnlineOrders(); checkSubscription(); } if (document.getElementById('screen-client').classList.contains('active')) { if (activeClientCat) renderClientProducts(activeClientCat); else renderClientCategories(); updateClientCartUI(); } const b = document.getElementById('nav-badge'); const c = ORDERS ? ORDERS.length : 0; if (c > 0) { b.style.display = 'block'; b.innerText = c; } else b.style.display = 'none'; }
         function myAlert(msg) { document.getElementById('custom-alert-msg').innerText = msg; document.getElementById('custom-alert').style.display = 'flex'; } function myConfirm(msg, yesCb) { document.getElementById('custom-confirm-msg').innerText = msg; document.getElementById('custom-confirm').style.display = 'flex'; confirmCallback = yesCb; } document.getElementById('confirm-yes-btn').onclick = function() { if (confirmCallback) confirmCallback(); closeModal('custom-confirm'); }; function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         // KASSA
@@ -403,59 +396,118 @@
         function updateCartUI() { let t = 0, q = 0; document.getElementById('cart-items').innerHTML = CART.map((i, idx) => { t += i.cartQty * i.customPrice; q += i.cartQty; return `<div class="cart-item" style="margin-bottom:10px;"><div class="flex-between"><b>${i.name}</b><button style="color:red;border:none;background:none;font-size:18px;" onclick="removeFromCart(${idx})">🗑</button></div><div class="flex-between" style="margin-top:5px;"><div class="cart-controls" style="display:flex;gap:5px;"><button class="qty-btn" onclick="changeQty(${idx},-1)">-</button><input type="number" class="qty-input" value="${i.cartQty}" onchange="updateCartQtyManual(${idx},this.value)"><button class="qty-btn" onclick="changeQty(${idx},1)">+</button></div><input type="number" class="price-input" value="${i.customPrice}" onchange="changePrice(${idx},this.value)"></div></div>`; }).join(''); document.getElementById('cart-sum-total').innerText = t.toLocaleString() + " so'm"; const b = document.getElementById('cart-badge'); if (q > 0) { b.style.display = 'flex'; b.innerText = q; } else b.style.display = 'none'; }
         function changeQty(i, d) { if (d > 0 && CART[i].cartQty >= DB.find(x => x.id == CART[i].id).qty) return myAlert("Yetarli!"); CART[i].cartQty += d; if (CART[i].cartQty <= 0) CART.splice(i, 1); updateCartUI(); } function updateCartQtyManual(i, v) { let q = parseFloat(v); const o = DB.find(x => x.id == CART[i].id); if (q > o.qty) { myAlert("Yetarli!"); q = o.qty; } if (q <= 0) { myConfirm("O'chirasizmi?", () => { CART.splice(i, 1); updateCartUI(); }); } else { CART[i].cartQty = q; updateCartUI(); } } function changePrice(i, v) { CART[i].customPrice = parseFloat(v) || 0; updateCartUI(); } function removeFromCart(i) { CART.splice(i, 1); updateCartUI(); } function toggleCart() { document.getElementById('cart-panel').classList.toggle('open'); }
 
+        // CHECKOUT & iPRINT RASMGA OLISH
         function checkoutConfirmation(type) { if (!CART.length) return myAlert("Savat bo'sh!"); if (type === 'nasiya') return openDebtModal(); tempType = type; const total = CART.reduce((a, b) => a + b.cartQty * b.customPrice, 0); const dName = dokonSozlamalar.dokon_nomi || "KEENG MARKET"; const dFoot = dokonSozlamalar.chek_footer || "Xaridingiz uchun rahmat!"; let h = `<div style="text-align:center;"><b>${dName}</b><br><small>Sana: ${new Date().toLocaleString()}</small><br><small>To'lov: ${type.toUpperCase()}</small></div><hr>`; CART.forEach(c => { h += `<div style="display:flex; justify-content:space-between;"><span>${c.name}</span><span>${c.cartQty}x${(c.customPrice).toLocaleString()}</span></div>`; }); h += `<hr><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:18px;"><span>JAMI:</span><span>${total.toLocaleString()}</span></div>`; document.getElementById('admin-check-content').innerHTML = h; let ph = `<div class="chk-header">${dName}</div><div class="chk-sub">Do'kon cheki<br>${new Date().toLocaleString()}</div>`; CART.forEach(c => { ph += `<div class="chk-item"><span style="flex-grow:1">${c.name}</span><span style="white-space:nowrap; margin-left:10px;">${c.cartQty}x${c.customPrice}</span></div>`; }); ph += `<div class="chk-total"><span>ITOGO:</span><span>${total.toLocaleString()}</span></div><div class="chk-footer">${dFoot}<br><span class="chk-emoji">😊</span></div>`; document.getElementById('printable-area').innerHTML = ph; document.getElementById('modal-admin-check').style.display = 'flex'; }
-        function completeCheckout() { const total = CART.reduce((a, b) => a + b.cartQty * b.customPrice, 0); processSale(tempType, total); closeModal('modal-admin-check'); } function printReceipt() { window.print(); }
-        function shareToIPrint() { const dName = dokonSozlamalar.dokon_nomi || "KEENG MARKET"; const total = CART.reduce((a, b) => a + b.cartQty * b.customPrice, 0); let text = `      ${dName}\n--------------------------------\nSana: ${new Date().toLocaleString()}\nTo'lov turi: ${tempType ? tempType.toUpperCase() : ''}\n--------------------------------\n`; CART.forEach(c => { text += `${c.name}\n${c.cartQty} x ${c.customPrice.toLocaleString()} = ${(c.cartQty * c.customPrice).toLocaleString()}\n`; }); text += `--------------------------------\nJAMI: ${total.toLocaleString()} so'm\n\n${dokonSozlamalar.chek_footer || "Xaridingiz uchun rahmat!"}\n\n\n`; if (navigator.share) { navigator.share({ title: 'Chek', text: text }).catch(err => console.log('Xato', err)); } else { myAlert("Share ishlamaydi."); } }
-        function processSale(type, total) { const p = CART.reduce((a, b) => a + (b.customPrice - (parseFloat(b.buy) || 0)) * b.cartQty, 0); CART.forEach(c => { const x = DB.find(i => i.id === c.id); if (x) x.qty -= c.cartQty; }); SESSION.sales.push({ id: Date.now(), time: new Date().toLocaleTimeString(), items: [...CART], total, profit: p, type }); CART = []; toggleCart(); saveToCloud(); renderStats(); myAlert("Tasdiqlandi!"); }
-
-        // OMBOR
-        function saveProduct() { const n = document.getElementById('p-name').value; const s = parseFloat(document.getElementById('p-sell').value); const id = document.getElementById('p-id').value; if (!n || !s) return myAlert("Xato!"); const i = { id: id ? parseInt(id) : Date.now(), code: document.getElementById('p-code').value, cat: document.getElementById('p-cat').value || 'Boshqa', name: n, unit: document.getElementById('p-unit').value, qty: parseFloat(document.getElementById('p-qty').value) || 0, buy: parseFloat(document.getElementById('p-buy').value) || 0, sell: s }; if (id) DB[DB.findIndex(x => x.id == id)] = i; else DB.push(i); clearForm(); renderStock(); saveToCloud(); }
-        function renderStock() { const s = document.getElementById('stock-search').value.toLowerCase(); const b = DB.reduce((a, x) => a + x.qty * (parseFloat(x.buy) || 0), 0); const sl = DB.reduce((a, x) => a + x.qty * (parseFloat(x.sell) || 0), 0); document.getElementById('stock-summary-container').innerHTML = `<div class="warehouse-summary"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><small>KELISH KAPI</small><h2>${b.toLocaleString()}</h2></div><div style="border-left:1px solid #fff3"><small>SOTUV KAPI</small><h2>${sl.toLocaleString()}</h2></div></div></div>`; document.getElementById('stock-list').innerHTML = DB.filter(p => { const codes = p.code ? p.code.split(',').map(c => c.trim().toLowerCase()) : []; return p.name.toLowerCase().includes(s) || codes.some(c => c.includes(s)); }).sort((x, y) => { if (x.qty <= 0 && y.qty > 0) return -1; if (x.qty > 0 && y.qty <= 0) return 1; return y.id - x.id; }).map(p => { const isOut = p.qty <= 0; const style = isOut ? 'background: #fee2e2; border: 1px solid #ef4444;' : ''; const qtyText = isOut ? '<b style="color:#ef4444">TUGAGAN (0)</b>' : `${p.qty} ${p.unit}`; return `<div class="card flex-between" style="${style}"><div><span class="cat-tag">${p.cat}</span><div><b>${p.name}</b></div><small>${qtyText}</small></div><button class="btn btn-blue small" style="width:auto" onclick="editP(${p.id})">✎</button></div>`; }).join(''); document.getElementById('cat-list').innerHTML = [...new Set(DB.map(p => p.cat))].map(c => `<option value="${c}">`).join(''); }
-        function editP(id) { const p = DB.find(x => x.id == id); Object.keys(p).forEach(k => { if (document.getElementById('p-' + k)) document.getElementById('p-' + k).value = p[k]; }); window.scrollTo(0, 0); } function clearForm() { document.querySelectorAll('#tab-ombor input').forEach(i => i.value = ''); document.getElementById('p-id').value = ''; }
-
-        // ONLINE
-        function renderOnlineOrders() { const c = ORDERS ? ORDERS.length : 0; document.getElementById('online-count-title').innerText = c; document.getElementById('online-orders-list').innerHTML = ORDERS.map(o => { let m = o.loc ? `<a href="https://www.google.com/maps?q=${o.loc.lat},${o.loc.lng}" target="_blank" class="btn btn-outline" style="margin-top:5px; text-decoration:none;">📍 Joylashuv</a>` : ''; return `<div class="card"><div class="flex-between"><b>${o.client}</b><small>${o.date}</small></div><div><a href="tel:${o.phone}">${o.phone}</a></div><div style="border-top:1px solid #eee; margin:5px 0; padding:5px 0; font-size:13px;">${o.items.map(i => `${i.name} x${i.qty}`).join('<br>')}</div><div class="flex-between"><b>Jami: ${o.total.toLocaleString()}</b></div>${m}<div class="grid-2" style="margin-top:10px;"><button class="btn btn-green small" onclick="acceptOrder(${o.id})">QABUL</button><button class="btn btn-red small" onclick="rejectOrder(${o.id})">BEKOR</button></div></div>`; }).join(''); }
-        function acceptOrder(id) { myConfirm("Qabul?", () => { const o = ORDERS.find(x => x.id === id); o.items.forEach(i => { const p = DB.find(x => x.id === i.id); if (p) p.qty -= i.qty; }); const pr = o.items.reduce((a, b) => a + (b.sell - (parseFloat(b.buy) || 0)) * b.qty, 0); SESSION.sales.push({ id: Date.now(), time: new Date().toLocaleTimeString(), items: o.items, total: o.total, profit: pr, type: 'naqd', note: `Online: ${o.client}` }); ORDERS = ORDERS.filter(x => x.id !== id); saveToCloud(); refreshUI(); myAlert("Qabul qilindi!"); }); } function rejectOrder(id) { myConfirm("O'chirasizmi?", () => { ORDERS = ORDERS.filter(x => x.id !== id); saveToCloud(); renderOnlineOrders(); }); }
-
-        // NASIYA
-        function openDebtModal() { if (!CART.length) return myAlert("Savat bo'sh!"); document.getElementById('debt-modal-total').innerText = CART.reduce((a, b) => a + b.cartQty * b.customPrice, 0).toLocaleString(); document.getElementById('modal-debt-create').style.display = 'flex'; }
-        function confirmDebt() { const n = document.getElementById('debt-customer-name').value; if (!n) return myAlert("Ism kerak!"); const t = CART.reduce((a, b) => a + b.cartQty * b.customPrice, 0); const p = CART.reduce((a, b) => a + (b.customPrice - (parseFloat(b.buy) || 0)) * b.cartQty, 0); CART.forEach(c => { const x = DB.find(i => i.id === c.id); if (x) x.qty -= c.cartQty; }); let d = DEBTS.find(x => x.name.toLowerCase() === n.toLowerCase()); if (!d) { d = { id: Date.now(), name: n, phone: document.getElementById('debt-customer-phone').value, balance: 0, history: [] }; DEBTS.push(d); } d.balance += t; d.history.push({ date: new Date().toLocaleString(), type: 'olindi', amount: t, items: [...CART] }); SESSION.sales.push({ id: Date.now(), time: new Date().toLocaleTimeString(), items: [...CART], total: t, profit: p, type: 'nasiya' }); CART = []; closeModal('modal-debt-create'); toggleCart(); saveToCloud(); renderStats(); myAlert("Nasiya yozildi!"); }
-        function renderDebts() { const s = document.getElementById('debt-search').value.toLowerCase(); document.getElementById('debt-list').innerHTML = DEBTS.filter(d => d.name.toLowerCase().includes(s) && d.balance > 0).map(d => `<div class="card flex-between" onclick="showDebtInfo(${d.id})"><div><b>${d.name}</b><br><small>${d.phone || ''}</small></div><b style="color:var(--red)">${d.balance.toLocaleString()}</b></div>`).join(''); document.getElementById('total-debt-sum').innerText = DEBTS.reduce((a, b) => a + b.balance, 0).toLocaleString() + " so'm"; } let curDebtId = null; function showDebtInfo(id) { curDebtId = id; const d = DEBTS.find(x => x.id == id); document.getElementById('debt-info-name').innerText = d.name; document.getElementById('debt-info-balance').innerText = d.balance.toLocaleString(); document.getElementById('debt-history-list').innerHTML = d.history.slice().reverse().map(h => `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #ddd;padding:5px 0;"><div>${h.date}<br><small>${h.type}</small></div><b style="color:${h.type == 'tolov' ? 'green' : 'red'}">${h.amount.toLocaleString()}</b></div>`).join(''); document.getElementById('modal-debt-info').style.display = 'flex'; } function payDebt() { const a = parseFloat(document.getElementById('debt-pay-amount').value); if (!a) return; const d = DEBTS.find(x => x.id == curDebtId); d.balance -= a; d.history.push({ date: new Date().toLocaleString(), type: 'tolov', amount: a, items: [] }); SESSION.sales.push({ id: Date.now(), time: new Date().toLocaleTimeString(), items: [], total: a, profit: 0, type: 'naqd', note: 'Qarz to\'lovi: ' + d.name }); document.getElementById('debt-pay-amount').value = ''; closeModal('modal-debt-info'); saveToCloud(); renderStats(); myAlert("To'landi!"); }
-
-        // HISOBOT
-        function renderStats() { if (!SESSION.sales) SESSION.sales = []; document.getElementById('stat-naqd').innerText = SESSION.sales.filter(x => x.type == 'naqd').reduce((a, b) => a + b.total, 0).toLocaleString(); document.getElementById('stat-plastik').innerText = SESSION.sales.filter(x => x.type == 'plastik').reduce((a, b) => a + b.total, 0).toLocaleString(); document.getElementById('stat-profit').innerText = SESSION.sales.reduce((a, b) => a + (b.profit || 0), 0).toLocaleString() + " so'm"; }
-        function closeDay() { myConfirm("Yopasizmi?", () => { const r = { date: new Date().toLocaleString(), totalNaqd: SESSION.sales.filter(x => x.type == 'naqd').reduce((a, b) => a + b.total, 0), totalPlastik: SESSION.sales.filter(x => x.type == 'plastik').reduce((a, b) => a + b.total, 0), totalNasiya: SESSION.sales.filter(x => x.type == 'nasiya').reduce((a, b) => a + b.total, 0), profit: SESSION.sales.reduce((a, b) => a + (b.profit || 0), 0), details: JSON.parse(JSON.stringify(SESSION.sales)), comment: document.getElementById('close-comment').value }; if (!ARCHIVES.daily) ARCHIVES.daily = []; ARCHIVES.daily.push(r); SESSION.sales = []; SESSION.date = new Date().toLocaleDateString(); saveToCloud(); renderStats(); myAlert("Kun yopildi!"); }); } function closePeriod(t) { myConfirm("Saqlaysizmi?", () => { const r = { date: new Date().toLocaleString(), type: t, summaryProfit: (ARCHIVES.daily || []).slice(-7).reduce((a, b) => a + b.profit, 0) }; if (!ARCHIVES[t == 'week' ? 'weekly' : 'monthly']) ARCHIVES[t == 'week' ? 'weekly' : 'monthly'] = []; ARCHIVES[t == 'week' ? 'weekly' : 'monthly'].push(r); saveToCloud(); myAlert("Saqlandi!"); }); } function renderArchive(t) { const d = (t == 'day' ? ARCHIVES.daily : (t == 'week' ? ARCHIVES.weekly : ARCHIVES.monthly)) || []; document.getElementById('archive-list').innerHTML = d.slice().reverse().map((i, idx) => { let total = 0; if (t === 'day') total = (i.totalNaqd || 0) + (i.totalPlastik || 0) + (i.totalNasiya || 0); let displayHtml = t === 'day' ? `<div style="text-align:right;"><div>Savdo: <b>${total.toLocaleString()}</b></div><div style="font-size:12px; color:var(--green)">Foyda: ${(i.profit || 0).toLocaleString()}</div></div>` : `<b style="color:var(--green)">${(i.profit || i.summaryProfit).toLocaleString()}</b>`; return `<div class="card flex-between" onclick="showArchiveDetails('${t}',${d.length - 1 - idx})"><b>${i.date}</b>${displayHtml}</div>`; }).join(''); } function showTodayDetails() { buildAndShowTable("Bugungi", SESSION.sales, true); } function showArchiveDetails(t, idx) { if (t !== 'day') return myAlert("Faqat kunlikda bor."); buildAndShowTable("Arxiv: " + ARCHIVES.daily[idx].date, ARCHIVES.daily[idx].details); } function buildAndShowTable(ti, tr, isT=false) { document.getElementById('archive-title').innerText = ti; if (!tr || !tr.length) { document.getElementById('archive-detail-content').innerHTML = "<p>Bo'sh</p>"; document.getElementById('modal-archive-detail').style.display = 'flex'; return; } let h = `<table class="report-table"><thead><tr><th>Vaqt</th><th>Tovar</th><th>Summa</th>${isT ? '<th></th>' : ''}</tr></thead><tbody>`; [...tr].reverse().forEach(s => { let l = s.items && s.items.length ? s.items.map(i => `${i.name} x${i.cartQty}`).join('<br>') : (s.note ? `<i>${s.note}</i>` : '-'); let b = isT ? `<td><button onclick="returnSale(${s.id})" style="background:red;color:white;border:none;padding:5px;border-radius:5px;font-size:10px;">VOZVRAT</button></td>` : ''; h += `<tr><td>${s.time}</td><td>${l}</td><td><b>${s.total.toLocaleString()}</b><br><span class="tag-${s.type}">${s.type.toUpperCase()}</span></td>${b}</tr>`; }); h += `</tbody></table>`; document.getElementById('archive-detail-content').innerHTML = h; document.getElementById('modal-archive-detail').style.display = 'flex'; } function returnSale(id) { myConfirm("Vozvrat?", () => { const idx = SESSION.sales.findIndex(s => s.id === id); if (idx === -1) return; const s = SESSION.sales[idx]; if (s.items) s.items.forEach(i => { const d = DB.find(x => x.id === i.id); if (d) d.qty += i.cartQty; }); SESSION.sales.splice(idx, 1); saveToCloud(); refreshUI(); closeModal('modal-archive-detail'); myAlert("Vozvrat qilindi!"); }); }
-
-        // MIJOZ & MINI APP BUYURTMA BERISH
-        function renderClientCategories() { activeClientCat = null; document.getElementById('client-title').innerText = "KATEGORIYALAR"; document.getElementById('client-back-btn').style.display = 'none'; const c = [...new Set(DB.map(p => p.cat))]; document.getElementById('client-view-container').innerHTML = c.map(x => `<div class="cat-card" onclick="renderClientProducts('${x}')"><i class="fas fa-folder"></i><b>${x}</b></div>`).join(''); } function renderClientProducts(cat) { activeClientCat = cat; document.getElementById('client-title').innerText = cat; document.getElementById('client-back-btn').style.display = 'block'; document.getElementById('client-view-container').innerHTML = DB.filter(p => p.cat === cat).map(p => `<div class="card flex-between"><div><b>${p.name}</b><br><span style="color:var(--blue)">${p.sell.toLocaleString()} so'm</span></div>${p.qty > 0 ? `<button class="btn btn-green small" style="width:auto" onclick="addToClientCart(${p.id})">Qo'shish +</button>` : `<span style="color:red">Tugagan</span>`}</div>`).join(''); } function addToClientCart(id) { const p = DB.find(x => x.id === id); const ex = clientCart.find(x => x.id === id); if (ex) ex.qty++; else clientCart.push({ ...p, qty: 1 }); updateClientCartUI(); } function updateClientCartUI() { const b = document.getElementById('client-cart-badge'); const q = clientCart.length; if (q > 0) { b.style.display = 'flex'; b.innerText = q; } else b.style.display = 'none'; let t = 0; document.getElementById('client-cart-items').innerHTML = clientCart.map((c, i) => { t += c.qty * c.sell; return `<div class="card flex-between" style="padding:10px; margin-bottom:5px;"><div><b>${c.name}</b><br>${c.sell}</div><div style="display:flex; align-items:center; gap:10px;"><button class="qty-btn" onclick="changeClientQty(${i},-1)">-</button><input type="number" class="qty-input" value="${c.qty}" onchange="updateClientQtyManual(${i},this.value)"><button class="qty-btn" onclick="changeClientQty(${i},1)">+</button></div></div>`; }).join(''); document.getElementById('client-cart-total').innerText = t.toLocaleString() + " so'm"; } function changeClientQty(i, d) { clientCart[i].qty += d; if (clientCart[i].qty <= 0) clientCart.splice(i, 1); updateClientCartUI(); } function updateClientQtyManual(i, v) { let q = parseFloat(v); if (q <= 0) clientCart.splice(i, 1); else clientCart[i].qty = q; updateClientCartUI(); } function toggleClientCart() { document.getElementById('client-cart-panel').classList.toggle('open'); } function getLocation() { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(p => { clientLoc = { lat: p.coords.latitude, lng: p.coords.longitude }; document.getElementById('loc-status').style.display = 'block'; }, () => myAlert("Ruxsat bering!")); } else myAlert("Ishlamaydi"); }
         
-        function submitOrderFinal() {
-            const cName = document.getElementById('client-name').value; const cPhone = document.getElementById('client-phone').value; const totalSum = clientCart.reduce((a, b) => a + b.qty * b.sell, 0);
-            if (!cName || !cPhone) return myAlert("Ism va Telefon kiriting!");
-            if (clientCart.length === 0) return myAlert("Savat bo'sh!");
-            
-            const o = { id: Date.now(), client: cName, phone: cPhone, items: [...clientCart], total: totalSum, date: new Date().toLocaleString(), loc: clientLoc };
-            let destShop = shopParam ? shopParam : currentUserPhone;
-            
-            if(destShop) {
-                db.ref("saas_dokonlar/" + destShop + "/ORDERS").once("value", snap => {
-                    let currentOrders = snap.val() || [];
-                    if(!Array.isArray(currentOrders)) currentOrders = Object.values(currentOrders);
-                    currentOrders.push(o);
-                    
-                    db.ref("saas_dokonlar/" + destShop + "/ORDERS").set(currentOrders).then(() => {
-                        clientCart = []; clientLoc = null; document.getElementById('client-name').value = ''; document.getElementById('client-phone').value = ''; document.getElementById('loc-status').style.display = 'none';
-                        closeModal('modal-client-check'); toggleClientCart(); 
-                        if(!shopParam) saveToCloud();
-                        myAlert("Buyurtma muvaffaqiyatli yuborildi! ✅\nSotuvchi tez orada bog'lanadi."); 
-                        updateClientCartUI();
-                    });
-                });
-            }
+        function shareToIPrint() {
+            const checkDiv = document.getElementById('admin-check-content');
+            const oldBorder = checkDiv.style.border;
+            checkDiv.style.border = "none";
+            checkDiv.style.padding = "20px";
+            checkDiv.style.background = "#ffffff";
+            checkDiv.style.color = "#000000";
+
+            html2canvas(checkDiv, { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
+                checkDiv.style.border = oldBorder;
+                checkDiv.style.padding = "15px";
+                canvas.toBlob(blob => {
+                    const file = new File([blob], "chek.png", { type: "image/png" });
+                    if (navigator.share) {
+                        navigator.share({ title: 'Xarid cheki', files: [file] }).catch(e => { myAlert("Ulashish bekor qilindi yoki xatolik."); });
+                    } else {
+                        myAlert("Qurilmangiz rasm ulashishni qo'llab-quvvatlamaydi.");
+                    }
+                }, "image/png");
+            }).catch(e => { myAlert("Rasmga olishda xatolik yuz berdi!"); });
         }
 
-        function startScanner(m) { document.getElementById('scanner-modal').style.display = 'flex'; if (html5QrCode) { try { html5QrCode.stop().then(() => { html5QrCode.clear(); }); } catch (e) {} } html5QrCode = new Html5Qrcode("reader"); scanLock = false; html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (d) => { if (scanLock) return; scanLock = true; if (m === 'ombor') { stopScanner(); document.getElementById('p-code').value = d; } else { const p = DB.find(x => { const codes = x.code ? x.code.split(',').map(c => c.trim().toLowerCase()) : []; return codes.includes(d.toLowerCase()); }); if (p) addToCart(p.id); else myAlert("Topilmadi!"); setTimeout(() => { scanLock = false; }, 1500); } }, (e) => {}).catch(e => console.log(e)); }
-        function stopScanner() { if (html5QrCode) html5QrCode.stop().then(() => { html5QrCode.clear(); document.getElementById('scanner-modal').style.display = 'none'; }).catch(() => { document.getElementById('scanner-modal').style.display = 'none'; }); else document.getElementById('scanner-modal').style.display = 'none'; }
+        function completeCheckout() { const total = CART.reduce((a, b) => a + b.cartQty * b.customPrice, 0); processSale(tempType, total); closeModal('modal-admin-check'); } function printReceipt() { window.print(); }
+        
+        function processSale(type, total) { 
+            const p = CART.reduce((a, b) => a + (b.customPrice - (parseFloat(b.buy) || 0)) * b.cartQty, 0); 
+            CART.forEach(c => { const x = DB.find(i => i.id === c.id); if (x) x.qty -= c.cartQty; }); 
+            SESSION.sales.push({ id: Date.now(), time: new Date().toLocaleTimeString(), items: [...CART], total, profit: p, type }); 
+            CART = []; 
+            updateCartUI(); 
+            toggleCart(); 
+            saveToCloud(); 
+            renderStats(); 
+            renderKassa(); 
+            renderStock(); 
+            myAlert("Tasdiqlandi!"); 
+        }
+
+        // OMBOR
+        function saveProduct() { const n = document.getElementById('p-name').value; const s = parseFloat(document.getElementById('p-sell').value); const id = document.getElementById('p-id').value; if (!n || !s) return myAlert("Xato!"); const i = { id: id ? parseInt(id) : Date.now(), code: document.getElementById('p-code').value, cat: document.getElementById('p-cat').value || 'Boshqa', name: n, unit: document.getElementById('p-unit').value, qty: parseFloat(document.getElementById('p-qty').value) || 0, buy: parseFloat(document.getElementById('p-buy').value) || 0, sell: s }; if (id) DB[DB.findIndex(x => x.id == id)] = i; else DB.push(i); clearForm(); renderStock(); saveToCloud(); } function renderStock() { const s = document.getElementById('stock-search').value.toLowerCase(); const b = DB.reduce((a, x) => a + x.qty * (parseFloat(x.buy) || 0), 0); const sl = DB.reduce((a, x) => a + x.qty * (parseFloat(x.sell) || 0), 0); document.getElementById('stock-summary-container').innerHTML = `<div class="warehouse-summary"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><small>KELISH KAPI</small><h2>${b.toLocaleString()}</h2></div><div style="border-left:1px solid #fff3"><small>SOTUV KAPI</small><h2>${sl.toLocaleString()}</h2></div></div></div>`; document.getElementById('stock-list').innerHTML = DB.filter(p => { const codes = p.code ? p.code.split(',').map(c => c.trim().toLowerCase()) : []; return p.name.toLowerCase().includes(s) || codes.some(c => c.includes(s)); }).sort((x, y) => { if (x.qty <= 0 && y.qty > 0) return -1; if (x.qty > 0 && y.qty <= 0) return 1; return y.id - x.id; }).map(p => { const isOut = p.qty <= 0; const style = isOut ? 'background: #fee2e2; border: 1px solid #ef4444;' : ''; const qtyText = isOut ? '<b style="color:#ef4444">TUGAGAN (0)</b>' : `${p.qty} ${p.unit}`; return `<div class="card flex-between" style="${style}"><div><span class="cat-tag">${p.cat}</span><div><b>${p.name}</b></div><small>${qtyText}</small></div><button class="btn btn-blue small" style="width:auto" onclick="editP(${p.id})">✎</button></div>`; }).join(''); document.getElementById('cat-list').innerHTML = [...new Set(DB.map(p => p.cat))].map(c => `<option value="${c}">`).join(''); } function editP(id) { const p = DB.find(x => x.id == id); Object.keys(p).forEach(k => { if (document.getElementById('p-' + k)) document.getElementById('p-' + k).value = p[k]; }); window.scrollTo(0, 0); } function clearForm() { document.querySelectorAll('#tab-ombor input').forEach(i => i.value = ''); document.getElementById('p-id').value = ''; }
+        
+        // ONLINE
+        function renderOnlineOrders() { const c = ORDERS ? ORDERS.length : 0; document.getElementById('online-count-title').innerText = c; document.getElementById('online-orders-list').innerHTML = ORDERS.map(o => { let m = o.loc ? `<a href="https://www.google.com/maps?q=${o.loc.lat},${o.loc.lng}" target="_blank" class="btn btn-outline" style="margin-top:5px; text-decoration:none;">📍 Joylashuv</a>` : ''; return `<div class="card"><div class="flex-between"><b>${o.client}</b><small>${o.date}</small></div><div><a href="tel:${o.phone}">${o.phone}</a></div><div style="border-top:1px solid #eee; margin:5px 0; padding:5px 0; font-size:13px;">${o.items.map(i => `${i.name} x${i.qty}`).join('<br>')}</div><div class="flex-between"><b>Jami: ${o.total.toLocaleString()}</b></div>${m}<div class="grid-2" style="margin-top:10px;"><button class="btn btn-green small" onclick="acceptOrder(${o.id})">QABUL</button><button class="btn btn-red small" onclick="rejectOrder(${o.id})">BEKOR</button></div></div>`; }).join(''); } 
+        function acceptOrder(id) { myConfirm("Qabul?", () => { const o = ORDERS.find(x => x.id === id); o.items.forEach(i => { const p = DB.find(x => x.id === i.id); if (p) p.qty -= i.qty; }); const pr = o.items.reduce((a, b) => a + (b.sell - (parseFloat(b.buy) || 0)) * b.qty, 0); SESSION.sales.push({ id: Date.now(), time: new Date().toLocaleTimeString(), items: o.items, total: o.total, profit: pr, type: 'naqd', note: `Online: ${o.client}` }); ORDERS = ORDERS.filter(x => x.id !== id); saveToCloud(); refreshUI(); myAlert("Qabul qilindi!"); }); } 
+        function rejectOrder(id) { myConfirm("O'chirasizmi?", () => { ORDERS = ORDERS.filter(x => x.id !== id); saveToCloud(); renderOnlineOrders(); }); }
+        
+        // NASIYA (YANGILANGAN MANTIQ)
+        function openDebtModal() { if (!CART.length) return myAlert("Savat bo'sh!"); document.getElementById('debt-modal-total').innerText = CART.reduce((a, b) => a + b.cartQty * b.customPrice, 0).toLocaleString(); document.getElementById('modal-debt-create').style.display = 'flex'; } 
+        function confirmDebt() { const n = document.getElementById('debt-customer-name').value; if (!n) return myAlert("Ism kerak!"); const t = CART.reduce((a, b) => a + b.cartQty * b.customPrice, 0); const p = CART.reduce((a, b) => a + (b.customPrice - (parseFloat(b.buy) || 0)) * b.cartQty, 0); CART.forEach(c => { const x = DB.find(i => i.id === c.id); if (x) x.qty -= c.cartQty; }); let d = DEBTS.find(x => x.name.toLowerCase() === n.toLowerCase()); if (!d) { d = { id: Date.now(), name: n, phone: document.getElementById('debt-customer-phone').value, balance: 0, history: [] }; DEBTS.push(d); } d.balance += t; d.history.push({ date: new Date().toLocaleString(), type: 'Nasiya xarid', amount: t, items: [...CART] }); SESSION.sales.push({ id: Date.now(), time: new Date().toLocaleTimeString(), items: [...CART], total: t, profit: p, type: 'nasiya' }); CART = []; updateCartUI(); closeModal('modal-debt-create'); toggleCart(); saveToCloud(); renderStats(); renderKassa(); renderStock(); renderDebts(); myAlert("Nasiya yozildi!"); } 
+        
+        function renderDebts() { 
+            const s = document.getElementById('debt-search').value.toLowerCase(); 
+            // 0 ga teng bo'lmagan HAMMANI ko'rsatish
+            document.getElementById('debt-list').innerHTML = DEBTS.filter(d => d.name.toLowerCase().includes(s) && d.balance !== 0).map(d => {
+                let balText = d.balance > 0 ? `<b style="color:var(--red)">Qarz: ${d.balance.toLocaleString()}</b>` : `<b style="color:var(--green)">Haqdor: ${Math.abs(d.balance).toLocaleString()}</b>`;
+                return `<div class="card flex-between" onclick="showDebtInfo(${d.id})"><div><b>${d.name}</b><br><small>${d.phone || ''}</small></div>${balText}</div>`;
+            }).join(''); 
+            // Jami qarz summasi faqat qarzga botganlardan olinadi
+            document.getElementById('total-debt-sum').innerText = DEBTS.filter(d => d.balance > 0).reduce((a, b) => a + b.balance, 0).toLocaleString() + " so'm"; 
+        } 
+        
+        let curDebtId = null; 
+        function showDebtInfo(id) { 
+            curDebtId = id; 
+            const d = DEBTS.find(x => x.id == id); 
+            document.getElementById('debt-info-name').innerText = d.name; 
+            const balEl = document.getElementById('debt-info-balance');
+            
+            if (d.balance > 0) {
+                balEl.innerText = "Qarz: " + d.balance.toLocaleString();
+                balEl.style.color = "var(--red)";
+            } else {
+                balEl.innerText = "Haqdor: " + Math.abs(d.balance).toLocaleString();
+                balEl.style.color = "var(--green)";
+            }
+
+            document.getElementById('debt-history-list').innerHTML = d.history.slice().reverse().map(h => `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #ddd;padding:5px 0;"><div>${h.date}<br><small>${h.type}</small></div><b style="color:${h.type === 'Pul olindi' ? 'green' : (h.type === 'Nasiya xarid' ? 'red' : 'var(--orange)')}">${h.amount.toLocaleString()}</b></div>`).join(''); 
+            document.getElementById('modal-debt-info').style.display = 'flex'; 
+        } 
+        
+        function payDebt(type) { 
+            const a = parseFloat(document.getElementById('debt-pay-amount').value); 
+            if (!a || a <= 0) return myAlert("Xato summa!"); 
+            const d = DEBTS.find(x => x.id == curDebtId); 
+            
+            if (type === 'kirim') {
+                d.balance -= a; 
+                d.history.push({ date: new Date().toLocaleString(), type: 'Pul olindi', amount: a, items: [] }); 
+                SESSION.sales.push({ id: Date.now(), time: new Date().toLocaleTimeString(), items: [], total: a, profit: 0, type: 'naqd', note: 'Qarz uzildi: ' + d.name }); 
+            } else {
+                d.balance += a; 
+                d.history.push({ date: new Date().toLocaleString(), type: 'Pul berildi', amount: a, items: [] }); 
+                SESSION.sales.push({ id: Date.now(), time: new Date().toLocaleTimeString(), items: [], total: -a, profit: 0, type: 'naqd', note: 'Haqdorga berildi: ' + d.name }); 
+            }
+
+            document.getElementById('debt-pay-amount').value = ''; 
+            closeModal('modal-debt-info'); 
+            saveToCloud(); renderStats(); renderDebts(); 
+            myAlert("Saqlandi!"); 
+        }
+
+        // HISOBOT
+        function renderStats() { if (!SESSION.sales) SESSION.sales = []; document.getElementById('stat-naqd').innerText = SESSION.sales.filter(x => x.type == 'naqd').reduce((a, b) => a + b.total, 0).toLocaleString(); document.getElementById('stat-plastik').innerText = SESSION.sales.filter(x => x.type == 'plastik').reduce((a, b) => a + b.total, 0).toLocaleString(); document.getElementById('stat-profit').innerText = SESSION.sales.reduce((a, b) => a + (b.profit || 0), 0).toLocaleString() + " so'm"; } function closeDay() { myConfirm("Yopasizmi?", () => { const r = { date: new Date().toLocaleString(), totalNaqd: SESSION.sales.filter(x => x.type == 'naqd').reduce((a, b) => a + b.total, 0), totalPlastik: SESSION.sales.filter(x => x.type == 'plastik').reduce((a, b) => a + b.total, 0), totalNasiya: SESSION.sales.filter(x => x.type == 'nasiya').reduce((a, b) => a + b.total, 0), profit: SESSION.sales.reduce((a, b) => a + (b.profit || 0), 0), details: JSON.parse(JSON.stringify(SESSION.sales)), comment: document.getElementById('close-comment').value }; if (!ARCHIVES.daily) ARCHIVES.daily = []; ARCHIVES.daily.push(r); SESSION.sales = []; SESSION.date = new Date().toLocaleDateString(); saveToCloud(); renderStats(); myAlert("Kun yopildi!"); }); } function closePeriod(t) { myConfirm("Saqlaysizmi?", () => { const r = { date: new Date().toLocaleString(), type: t, summaryProfit: (ARCHIVES.daily || []).slice(-7).reduce((a, b) => a + b.profit, 0) }; if (!ARCHIVES[t == 'week' ? 'weekly' : 'monthly']) ARCHIVES[t == 'week' ? 'weekly' : 'monthly'] = []; ARCHIVES[t == 'week' ? 'weekly' : 'monthly'].push(r); saveToCloud(); myAlert("Saqlandi!"); }); } function renderArchive(t) { const d = (t == 'day' ? ARCHIVES.daily : (t == 'week' ? ARCHIVES.weekly : ARCHIVES.monthly)) || []; document.getElementById('archive-list').innerHTML = d.slice().reverse().map((i, idx) => { let total = 0; if (t === 'day') total = (i.totalNaqd || 0) + (i.totalPlastik || 0) + (i.totalNasiya || 0); let displayHtml = t === 'day' ? `<div style="text-align:right;"><div>Savdo: <b>${total.toLocaleString()}</b></div><div style="font-size:12px; color:var(--green)">Foyda: ${(i.profit || 0).toLocaleString()}</div></div>` : `<b style="color:var(--green)">${(i.profit || i.summaryProfit).toLocaleString()}</b>`; return `<div class="card flex-between" onclick="showArchiveDetails('${t}',${d.length - 1 - idx})"><b>${i.date}</b>${displayHtml}</div>`; }).join(''); } function showTodayDetails() { buildAndShowTable("Bugungi", SESSION.sales, true); } function showArchiveDetails(t, idx) { if (t !== 'day') return myAlert("Faqat kunlikda bor."); buildAndShowTable("Arxiv: " + ARCHIVES.daily[idx].date, ARCHIVES.daily[idx].details); } function buildAndShowTable(ti, tr, isT=false) { document.getElementById('archive-title').innerText = ti; if (!tr || !tr.length) { document.getElementById('archive-detail-content').innerHTML = "<p>Bo'sh</p>"; document.getElementById('modal-archive-detail').style.display = 'flex'; return; } let h = `<table class="report-table"><thead><tr><th>Vaqt</th><th>Tovar</th><th>Summa</th>${isT ? '<th></th>' : ''}</tr></thead><tbody>`; [...tr].reverse().forEach(s => { let l = s.items && s.items.length ? s.items.map(i => `${i.name} x${i.cartQty}`).join('<br>') : (s.note ? `<i>${s.note}</i>` : '-'); let b = isT ? `<td><button onclick="returnSale(${s.id})" style="background:red;color:white;border:none;padding:5px;border-radius:5px;font-size:10px;">VOZVRAT</button></td>` : ''; h += `<tr><td>${s.time}</td><td>${l}</td><td><b>${s.total.toLocaleString()}</b><br><span class="tag-${s.type}">${s.type.toUpperCase()}</span></td>${b}</tr>`; }); h += `</tbody></table>`; document.getElementById('archive-detail-content').innerHTML = h; document.getElementById('modal-archive-detail').style.display = 'flex'; } function returnSale(id) { myConfirm("Vozvrat?", () => { const idx = SESSION.sales.findIndex(s => s.id === id); if (idx === -1) return; const s = SESSION.sales[idx]; if (s.items) s.items.forEach(i => { const d = DB.find(x => x.id === i.id); if (d) d.qty += i.cartQty; }); SESSION.sales.splice(idx, 1); saveToCloud(); refreshUI(); closeModal('modal-archive-detail'); myAlert("Vozvrat qilindi!"); }); }
+
+        // MIJOZ
+        function renderClientCategories() { activeClientCat = null; document.getElementById('client-title').innerText = "KATEGORIYALAR"; document.getElementById('client-back-btn').style.display = 'none'; const c = [...new Set(DB.map(p => p.cat))]; document.getElementById('client-view-container').innerHTML = c.map(x => `<div class="cat-card" onclick="renderClientProducts('${x}')"><i class="fas fa-folder"></i><b>${x}</b></div>`).join(''); } function renderClientProducts(cat) { activeClientCat = cat; document.getElementById('client-title').innerText = cat; document.getElementById('client-back-btn').style.display = 'block'; document.getElementById('client-view-container').innerHTML = DB.filter(p => p.cat === cat).map(p => `<div class="card flex-between"><div><b>${p.name}</b><br><span style="color:var(--blue)">${p.sell.toLocaleString()} so'm</span></div>${p.qty > 0 ? `<button class="btn btn-green small" style="width:auto" onclick="addToClientCart(${p.id})">Qo'shish +</button>` : `<span style="color:red">Tugagan</span>`}</div>`).join(''); } function addToClientCart(id) { const p = DB.find(x => x.id === id); const ex = clientCart.find(x => x.id === id); if (ex) ex.qty++; else clientCart.push({ ...p, qty: 1 }); updateClientCartUI(); } function updateClientCartUI() { const b = document.getElementById('client-cart-badge'); const q = clientCart.length; if (q > 0) { b.style.display = 'flex'; b.innerText = q; } else b.style.display = 'none'; let t = 0; document.getElementById('client-cart-items').innerHTML = clientCart.map((c, i) => { t += c.qty * c.sell; return `<div class="card flex-between" style="padding:10px; margin-bottom:5px;"><div><b>${c.name}</b><br>${c.sell}</div><div style="display:flex; align-items:center; gap:10px;"><button class="qty-btn" onclick="changeClientQty(${i},-1)">-</button><input type="number" class="qty-input" value="${c.qty}" onchange="updateClientQtyManual(${i},this.value)"><button class="qty-btn" onclick="changeClientQty(${i},1)">+</button></div></div>`; }).join(''); document.getElementById('client-cart-total').innerText = t.toLocaleString() + " so'm"; } function changeClientQty(i, d) { clientCart[i].qty += d; if (clientCart[i].qty <= 0) clientCart.splice(i, 1); updateClientCartUI(); } function updateClientQtyManual(i, v) { let q = parseFloat(v); if (q <= 0) clientCart.splice(i, 1); else clientCart[i].qty = q; updateClientCartUI(); } function toggleClientCart() { document.getElementById('client-cart-panel').classList.toggle('open'); } function getLocation() { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(p => { clientLoc = { lat: p.coords.latitude, lng: p.coords.longitude }; document.getElementById('loc-status').style.display = 'block'; }, () => myAlert("Ruxsat bering!")); } else myAlert("Ishlamaydi"); }
+        function submitOrderFinal() { const cName = document.getElementById('client-name').value; const cPhone = document.getElementById('client-phone').value; const totalSum = clientCart.reduce((a, b) => a + b.qty * b.sell, 0); if (!cName || !cPhone) return myAlert("Ism va Telefon kiriting!"); if (clientCart.length === 0) return myAlert("Savat bo'sh!"); const o = { id: Date.now(), client: cName, phone: cPhone, items: [...clientCart], total: totalSum, date: new Date().toLocaleString(), loc: clientLoc }; let destShop = shopParam ? shopParam : currentUserPhone; if(destShop) { db.ref("saas_dokonlar/" + destShop + "/ORDERS").once("value", snap => { let currentOrders = snap.val() || []; if(!Array.isArray(currentOrders)) currentOrders = Object.values(currentOrders); currentOrders.push(o); db.ref("saas_dokonlar/" + destShop + "/ORDERS").set(currentOrders).then(() => { if (dokonSozlamalar.tg_bot_token && dokonSozlamalar.tg_chat_id) { let msg = `🛒 <b>YANGI ONLINE BUYURTMA!</b>\n\n👤 Mijoz: <b>${cName}</b>\n📞 Tel: +${cPhone}\n\n🛍 <b>Buyurtma ro'yxati:</b>\n`; clientCart.forEach(c => { msg += `▫️ ${c.name} x${c.qty} = ${(c.qty * c.sell).toLocaleString()} so'm\n`; }); msg += `\n💰 <b>JAMI SUMMA: ${totalSum.toLocaleString()} so'm</b>`; if (clientLoc) msg += `\n\n📍 <a href="https://maps.google.com/?q=$${clientLoc.lat},${clientLoc.lng}">Xaritada ko'rish</a>`; fetch(`https://api.telegram.org/bot${dokonSozlamalar.tg_bot_token}/sendMessage`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ chat_id: dokonSozlamalar.tg_chat_id, text: msg, parse_mode: 'HTML' }) }).catch(e => console.log(e)); } clientCart = []; clientLoc = null; document.getElementById('client-name').value = ''; document.getElementById('client-phone').value = ''; document.getElementById('loc-status').style.display = 'none'; updateClientCartUI(); closeModal('modal-client-check'); toggleClientCart(); if(!shopParam) saveToCloud(); myAlert("Buyurtma muvaffaqiyatli yuborildi! ✅\nSotuvchi tez orada bog'lanadi."); }); }); } }
+        
+        function startScanner(m) { document.getElementById('scanner-modal').style.display = 'flex'; if (html5QrCode) { try { html5QrCode.stop().then(() => { html5QrCode.clear(); }); } catch (e) {} } html5QrCode = new Html5Qrcode("reader"); scanLock = false; html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (d) => { if (scanLock) return; scanLock = true; if (m === 'ombor') { stopScanner(); document.getElementById('p-code').value = d; } else { const p = DB.find(x => { const codes = x.code ? x.code.split(',').map(c => c.trim().toLowerCase()) : []; return codes.includes(d.toLowerCase()); }); if (p) addToCart(p.id); else myAlert("Topilmadi!"); setTimeout(() => { scanLock = false; }, 1500); } }, (e) => {}).catch(e => console.log(e)); } function stopScanner() { if (html5QrCode) html5QrCode.stop().then(() => { html5QrCode.clear(); document.getElementById('scanner-modal').style.display = 'none'; }).catch(() => { document.getElementById('scanner-modal').style.display = 'none'; }); else document.getElementById('scanner-modal').style.display = 'none'; }
     </script>
 </body>
 </html>
