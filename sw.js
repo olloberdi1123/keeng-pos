@@ -1,4 +1,4 @@
-const CACHE_NAME = 'keeng-saas-cache-v5';
+const CACHE_NAME = 'keeng-saas-cache-v6';
 
 // Oflayn ishlashi uchun xotiraga olinadigan fayllar ro'yxati
 const urlsToCache = [
