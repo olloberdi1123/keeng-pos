@@ -1,17 +1,17 @@
 {
-  "name": "Keeng Market SaaS",
-  "short_name": "Keeng Market",
-  "description": "Savdo va Ombor hisobini yuritish tizimi",
-  "start_url": "./index.html",
+  "name": "Keeng Market Super Pult",
+  "short_name": "SaaS Pult",
+  "description": "Barcha do'konlarni boshqarish markazi",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#2563eb",
+  "background_color": "#0f172a",
+  "theme_color": "#0ea5e9",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzI1NjNlYiIvPjx0ZXh0IHg9IjI1NiIgeT0iMzUwIiBmb250LXNpemU9IjI1MCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPks8L3RleHQ+PC9zdmc+",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "https://cdn-icons-png.flaticon.com/512/2933/2933116.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
+}
